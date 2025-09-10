@@ -1,0 +1,34 @@
+services:
+  app:
+    build:
+      context: .
+      network: host
+    image: h.yazdani/spallet:latest
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    links:
+      - "db:postgres_host"
+    ports:
+      - "127.0.0.1:4004:4004"
+    volumes:
+      - ./assets/config.yaml:/app/assets/config.yaml
+
+  db:
+    image: postgres:17.6-trixie
+    restart: unless-stopped
+    shm_size: 128mb
+    environment:
+      POSTGRES_USER: postgres
+      PGUSER: postgres
+      POSTGRES_PASSWORD: 123456
+      POSTGRES_DB: wallet
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready", "-d", "wallet" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+     #uncomment this section to make data persistent
+#    volumes:
+#      - ./data:/var/lib/postgresql/data

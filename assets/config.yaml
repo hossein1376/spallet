@@ -1,0 +1,15 @@
+db:
+  host: postgres_host
+  port: 5432
+  username: postgres
+  password: 123456
+  name: wallet
+  disable_tls: true
+worker:
+  name: wallet_withdraw
+  retry_count: 4
+  size: 1024
+  delay_interval: 1s
+  backoff_multiplier: 1
+server:
+  addr: :4004

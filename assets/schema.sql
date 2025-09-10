@@ -1,0 +1,1 @@
+../pkg/infrastructure/database/postgres/schema/schema.sql

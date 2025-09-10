@@ -1,0 +1,504 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Spallet",
+    "description": "Split Balance Wallet API Documentation",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/wallets/{user_id}/transactions": {
+      "get": {
+        "operationId": "transactionHistory",
+        "tags": [
+          "wallet"
+        ],
+        "summary": "Transaction History",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "count",
+            "required": false,
+            "style": "form",
+            "description": "Maximum number of returned objects. Must be between `0` and `100`. If zero, it will default to `20`.",
+            "explode": true,
+            "schema": {
+              "type": "integer"
+            },
+            "allowReserved": false
+          },
+          {
+            "in": "query",
+            "name": "threshold",
+            "required": false,
+            "style": "form",
+            "description": "Used for pagination. The last ID from the previous request, to list from there on.",
+            "explode": true,
+            "schema": {
+              "type": "integer"
+            },
+            "allowReserved": false
+          },
+          {
+            "$ref": "#/components/parameters/user_id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The request was successful, and the server has returned the requested resource in the response body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Transaction"
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "title": "TransactionHistoryOk"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Bad Request"
+          }
+        },
+        "description": "Retrieve a list of transactions history, with pagination."
+      }
+    },
+    "/wallets/{user_id}/topup": {
+      "post": {
+        "operationId": "topUpBalance",
+        "summary": "Top-up Balance",
+        "responses": {
+          "204": {
+            "$ref": "#/components/responses/No Content"
+          },
+          "400": {
+            "$ref": "#/components/responses/Bad Request"
+          },
+          "404": {
+            "$ref": "#/components/responses/Not Found"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": "`amount`: The deposit amount. Must be a positive number, otherwise 400.\n\n`release_date`: Optional date to unfreeze the funds, if NULL it will be accessible immediately. Must be in `RFC3339` format (i.e  `2025-09-10T16:00:00.0+03:30`), otherwise 400.\n\n`description`: Optional deposit description.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "release_date": {
+                    "type": "string"
+                  },
+                  "amount": {
+                    "type": "number",
+                    "description": "Must be greater than zero"
+                  },
+                  "description": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "amount"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/user_id"
+          }
+        ],
+        "description": "Add funds to the user's wallet.",
+        "tags": [
+          "wallet"
+        ]
+      }
+    },
+    "/wallets/{user_id}/withdraw": {
+      "post": {
+        "operationId": "withdraw",
+        "summary": "Withdraw",
+        "responses": {
+          "200": {
+            "description": "The request was successful, and the server has returned the requested resource in the response body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "ref_id": {
+                          "type": "string",
+                          "description": "UUID"
+                        }
+                      },
+                      "required": [
+                        "ref_id"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Bad Request"
+          },
+          "404": {
+            "$ref": "#/components/responses/Not Found"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": "`amount`: How much to withdraw. Must be a positive number, otherwise 400. Must be less than or equals to the user's available balance, otherwise 409.\n\n`description`: Optional transfer description.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "amount": {
+                    "type": "number",
+                    "description": "Must be greater than zero."
+                  },
+                  "description": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "amount"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/user_id"
+          }
+        ],
+        "description": "Withdraw funds and transfer to a target.",
+        "tags": [
+          "wallet"
+        ]
+      }
+    },
+    "/users": {
+      "post": {
+        "operationId": "createNewUser",
+        "tags": [
+          "user"
+        ],
+        "summary": "Create new user",
+        "responses": {
+          "201": {
+            "description": "The request was successful, and a new resource was created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "integer"
+                        },
+                        "username": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "username"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Bad Request"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": "`username`: Must be unique, otherwise 409.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "username": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "username"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [],
+        "description": "Create a new user."
+      }
+    },
+    "/wallets/{user_id}/balance": {
+      "get": {
+        "operationId": "balance",
+        "tags": [
+          "wallet"
+        ],
+        "summary": "Balance",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/user_id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The request was successful, and the server has returned the requested resource in the response body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Balance"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "title": "BalanceOk"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Bad Request"
+          },
+          "404": {
+            "$ref": "#/components/responses/Not Found"
+          }
+        },
+        "description": "Calculate and return the user's balance."
+      }
+    }
+  },
+  "components": {
+    "responses": {
+      "No Content": {
+        "description": "The request was successful, but there is no content to return in the response.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "null"
+            }
+          }
+        }
+      },
+      "Bad Request": {
+        "description": "The server could not understand the request due to invalid syntax. The client should modify the request and try again.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "message": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "message"
+              ]
+            }
+          }
+        }
+      },
+      "Not Found": {
+        "description": "The server cannot find the requested resource. The endpoint may be invalid or the resource may no longer exist.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "message": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "message"
+              ]
+            }
+          }
+        }
+      },
+      "Ok": {
+        "description": "The request was successful, and the server has returned the requested resource in the response body.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "data": {
+                  "type": "object"
+                }
+              },
+              "required": [
+                "data"
+              ]
+            }
+          }
+        }
+      },
+      "Conflict": {
+        "description": "The request could not be completed due to a conflict with the current state of the resource. Resolve the conflict and try again.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "message": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "message"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "parameters": {
+      "user_id": {
+        "name": "user_id",
+        "required": true,
+        "in": "path",
+        "description": "User ID",
+        "schema": {
+          "type": "integer"
+        },
+        "explode": false,
+        "style": "simple",
+        "allowReserved": false,
+        "allowEmptyValue": false
+      }
+    },
+    "schemas": {
+      "Transaction": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "user_id": {
+            "type": "integer"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "completed",
+              "failed"
+            ],
+            "description": "Only for Withdrawals, and can not be NULL."
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "deposit",
+              "withdrawal"
+            ],
+            "description": "Transaction type."
+          },
+          "release_date": {
+            "type": "string",
+            "description": "Only for deposits, and can be NULL."
+          },
+          "description": {
+            "type": "string"
+          },
+          "ref_id": {
+            "type": "string",
+            "description": "UUID. Only for Withdrawals, and can be NULL."
+          }
+        },
+        "required": [
+          "id",
+          "user_id",
+          "amount",
+          "created_at",
+          "updated_at",
+          "type"
+        ],
+        "description": "A tranaction entity"
+      },
+      "Balance": {
+        "type": "object",
+        "properties": {
+          "available": {
+            "type": "number"
+          },
+          "total": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "available",
+          "total"
+        ],
+        "description": "Account balance details"
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "wallet"
+    },
+    {
+      "name": "user"
+    }
+  ],
+  "servers": [
+    {
+      "url": "http://127.0.0.1:4004",
+      "description": "Local development address."
+    }
+  ]
+}
