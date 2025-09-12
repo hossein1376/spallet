@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"time"
 
@@ -32,7 +33,8 @@ type Worker struct {
 }
 
 type Server struct {
-	Addr string `yaml:"addr"`
+	Addr     string     `yaml:"addr"`
+	LogLevel slog.Level `yaml:"log_level"`
 }
 
 func New(path string) (*Config, error) {

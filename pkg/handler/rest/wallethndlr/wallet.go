@@ -3,9 +3,9 @@ package wallethndlr
 import (
 	"net/http"
 
+	"github.com/hossein1376/spallet/pkg/application/service"
 	"github.com/hossein1376/spallet/pkg/domain/model"
 	"github.com/hossein1376/spallet/pkg/handler/rest/serde"
-	"github.com/hossein1376/spallet/pkg/service"
 )
 
 const UserID = "user_id"
@@ -48,7 +48,9 @@ func (h WalletHandler) WithdrawHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	refId, err := h.services.Wallets.WithdrawalService(ctx, req.userID, req.Amount)
+	refId, err := h.services.Wallets.WithdrawalService(
+		ctx, req.userID, req.Amount, req.Description,
+	)
 	if err != nil {
 		status, resp := serde.ExtractFromErr(ctx, err)
 		serde.WriteJson(ctx, w, status, resp)

@@ -8,7 +8,7 @@ import (
 	"github.com/hossein1376/spallet/pkg/domain/model"
 )
 
-func (s WalletsService) HistoryService(
+func (s *WalletsService) HistoryService(
 	ctx context.Context, userID model.UserID, count, threshold int64,
 ) ([]model.Transaction, error) {
 	var transactions []model.Transaction

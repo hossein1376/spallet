@@ -1,6 +1,7 @@
 package worker
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -41,6 +42,30 @@ func NewWorker(opts ...Options) (*Worker, error) {
 
 	q.jobs = make(chan job, q.bufferSize)
 	return q, nil
+}
+
+type job struct {
+	ctx      context.Context
+	id       string
+	work     func(ctx context.Context) error
+	fallback func(ctx context.Context) error
+}
+
+func (q *Worker) Add(
+	ctx context.Context, id string, work, fallback func(ctx context.Context) error,
+) error {
+	switch {
+	case q.isClosed:
+		return ErrQueueClosed
+	case work == nil:
+		return ErrNilWork
+	}
+
+	go func() {
+		q.jobs <- job{ctx: ctx, id: id, work: work, fallback: fallback}
+	}()
+	q.logger.DebugContext(ctx, "add new job", slog.String("id", id))
+	return nil
 }
 
 func (q *Worker) Run() {
@@ -96,8 +121,18 @@ func (q *Worker) Run() {
 	}
 }
 
-func (q *Worker) Stop() {
-	q.isClosed = true
-	q.wg.Wait()
-	close(q.jobs)
+func (q *Worker) Stop(ctx context.Context) error {
+	doneCh := make(chan struct{})
+	go func() {
+		q.isClosed = true
+		q.wg.Wait()
+		close(q.jobs)
+		doneCh <- struct{}{}
+	}()
+	select {
+	case <-doneCh:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }

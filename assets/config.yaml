@@ -7,9 +7,10 @@ db:
   disable_tls: true
 worker:
   name: wallet_withdraw
-  retry_count: 4
+  retry_count: 2
   size: 1024
   delay_interval: 1s
   backoff_multiplier: 1
 server:
   addr: :4004
+  log_level: debug

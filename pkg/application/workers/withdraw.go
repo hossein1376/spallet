@@ -1,4 +1,4 @@
-package jobs
+package workers
 
 import (
 	"fmt"
@@ -7,11 +7,7 @@ import (
 	"github.com/hossein1376/spallet/pkg/tools/worker"
 )
 
-type Jobs struct {
-	WalletWithdraw *worker.Worker
-}
-
-func NewJobs(cfg config.Worker) (*Jobs, error) {
+func withdrawWorker(cfg config.Worker) (*worker.Worker, error) {
 	w, err := worker.NewWorker(
 		worker.WithRetryCount(cfg.RetryCount),
 		worker.WithBufferSize(cfg.Size),
@@ -21,15 +17,5 @@ func NewJobs(cfg config.Worker) (*Jobs, error) {
 	if err != nil {
 		return nil, fmt.Errorf("wallet_withdraw worker: %w", err)
 	}
-	return &Jobs{WalletWithdraw: w}, nil
-}
-
-func (w *Jobs) Run() {
-	go func() {
-		w.WalletWithdraw.Run()
-	}()
-}
-
-func (w *Jobs) Stop() {
-	w.WalletWithdraw.Stop()
+	return w, nil
 }

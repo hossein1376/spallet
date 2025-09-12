@@ -29,6 +29,7 @@ CREATE TABLE balances
     user_id            BIGINT PRIMARY KEY REFERENCES users (id) ON DELETE CASCADE,
     available          NUMERIC     NOT NULL DEFAULT 0 CHECK (available >= 0),
     total              NUMERIC     NOT NULL DEFAULT 0 CHECK (total >= 0),
+    last_checked_id    BIGINT      NOT NULL DEFAULT 0,
     last_calculated_at TIMESTAMPTZ NOT NULL DEFAULT 'epoch'
 );
 
@@ -42,17 +43,34 @@ CREATE INDEX idx_balances_user ON balances (user_id);
 CREATE FUNCTION refresh_user_balance(param_user_id BIGINT)
 RETURNS TABLE (total_balance NUMERIC, available_balance NUMERIC) AS $$
 DECLARE
-    v_last TIMESTAMPTZ;
+    v_last_time     TIMESTAMPTZ;
+    v_last_id       BIGINT;
+    v_total_sum     BIGINT;
+    v_available_sum BIGINT;
 BEGIN
-    SELECT last_calculated_at INTO v_last
+    SELECT last_checked_id ,last_calculated_at INTO v_last_id, v_last_time
     FROM balances WHERE user_id = param_user_id FOR UPDATE;
 
     IF NOT FOUND THEN
         RAISE EXCEPTION 'user balance not found';
     END IF;
 
-    UPDATE balances
-    SET total = total + COALESCE((
+    CREATE TEMPORARY TABLE to_calculate
+    (
+        ID BIGINT,
+        amount NUMERIC,
+        type VARCHAR(31),
+        release_date TIMESTAMPTZ
+    );
+    INSERT INTO to_calculate(id, amount, type, release_date)
+    SELECT id, amount, type, release_date
+    FROM transactions
+    WHERE user_id = param_user_id
+      AND (id > v_last_id OR
+           (release_date > v_last_time AND release_date <= NOW()))
+    ORDER BY id;
+
+    SELECT COALESCE((
         SELECT SUM(
             CASE
                 WHEN type = 'deposit' THEN amount
@@ -60,27 +78,32 @@ BEGIN
                 ELSE 0
             END
         )
-        FROM transactions
-        WHERE user_id = param_user_id AND created_at >= v_last
-    ), 0),
-    available = available + COALESCE((
+        FROM to_calculate WHERE id > v_last_id), 0),
+    COALESCE((
         SELECT SUM(
             CASE
-                WHEN type = 'deposit' AND (
-                    (release_date IS NULL AND created_at >= v_last)
+                WHEN
+                    type = 'deposit' AND
+                    (release_date IS NULL AND id > v_last_id)
                         OR
-                    (release_date >= v_last AND release_date <= NOW()))
+                    (release_date > v_last_time AND release_date <= NOW())
                     THEN amount
-                WHEN type = 'withdrawal' AND created_at >= v_last
-                    THEN -amount
+                WHEN type = 'withdrawal' AND id > v_last_id THEN -amount
                 ELSE 0
             END
         )
-        FROM transactions
-        WHERE user_id = param_user_id
-    ), 0),
-    last_calculated_at = NOW()
+        FROM to_calculate), 0)
+    INTO v_total_sum, v_available_sum;
+
+    UPDATE balances
+    SET total = total + v_total_sum,
+    available = available + v_available_sum,
+    last_calculated_at = NOW(),
+    last_checked_id = (SELECT COALESCE((SELECT id FROM to_calculate ORDER BY id
+        DESC LIMIT 1), v_last_id))
     WHERE user_id = param_user_id;
+
+    DROP TABLE to_calculate;
 
     RETURN QUERY
     SELECT total, available FROM balances WHERE user_id = param_user_id;
@@ -95,20 +118,20 @@ DECLARE
 BEGIN
     CREATE TEMPORARY TABLE pending_tx
     (
-        id    BIGINT,
-        user_id  BIGINT,
-        amount   NUMERIC,
-        ref_id   UUID
+        id      BIGINT,
+        user_id BIGINT,
+        amount  NUMERIC,
+        ref_id  UUID
     ) ON COMMIT DROP;
 
     INSERT INTO pending_tx (id, user_id, amount, ref_id)
     SELECT id, user_id, amount, ref_id
     FROM transactions
     WHERE status = 'pending' AND (p_tx_id IS NULL OR id = p_tx_id)
-    FOR UPDATE
-    RETURNING 1 INTO v_count;
+    FOR UPDATE;
+    GET DIAGNOSTICS v_count = ROW_COUNT;
 
-    IF p_tx_id IS NOT NULL AND v_count IS NULL THEN
+    IF p_tx_id IS NOT NULL AND v_count = 0 THEN
         RAISE EXCEPTION 'Transaction not found or not pending';
     END IF;
 

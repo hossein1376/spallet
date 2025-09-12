@@ -9,7 +9,7 @@ import (
 	"github.com/hossein1376/spallet/pkg/domain/model"
 )
 
-func (s WalletsService) TopUpService(
+func (s *WalletsService) TopUpService(
 	ctx context.Context,
 	userID model.UserID,
 	amount int64,

@@ -46,13 +46,17 @@ func NewPool(ctx context.Context, cfg config.DB) (*Pool, error) {
 		return nil, fmt.Errorf("sql.Open(): %w", err)
 	}
 
+	return NewFromDB(ctx, db)
+}
+
+func NewFromDB(ctx context.Context, db *sql.DB) (*Pool, error) {
 	// Check if the connection is established
-	if err = db.Ping(); err != nil {
+	if err := db.Ping(); err != nil {
 		return nil, fmt.Errorf("pinging database: %w", err)
 	}
 
 	pool := &Pool{db: db}
-	if err = pool.migrate(ctx); err != nil {
+	if err := pool.migrate(ctx); err != nil {
 		return nil, fmt.Errorf("migrating database: %w", err)
 	}
 

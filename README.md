@@ -10,15 +10,39 @@ Run the application with:
 docker compose up -d
 ```
 
-Application will listen on `http://127.0.0.1:4004`. Config file is located
-[here](./assets/config.yaml) and is mounted into the container.  
-By default, database volumes are disabled. To
-make data persistent, uncomment related section in the `compose.yaml` file.
+It will listen on port `4004`. The onfig file is located [here](./assets/config.yaml) and is
+mounted into the container. By default, database volumes are disabled. To make
+data persistent, uncomment related section in the `compose.yaml` file.
+
+### Tests
+
+To run all tests:
+
+```shell
+make test
+```
+
+Unit tests use `mockery` generated instances to test the services with mocked
+dependencies.  
+Run `make unit-test` to run them.
+
+Integration tests are tested against an ephemeral container database. A separate
+module is used for this purpose. Refer to its [directory](./internal/integration)
+for more details.  
+Run `make integration` to run them. Make sure you have docker running.
+
+### Stress Load
+
+In order to test the application under load, a package is written to replicate
+traffic. It simulates roughly **10,000 deposits** and **2,000 withdraw** requests
+per hour, per user.
+
+Run `make stress-load` to start it with default parameters of `10` users.
 
 ## Open API
 
 OpenAPI (swagger) specification files are located [here](./assets/docs/openapi).
-Visit `http://127.0.0.1:4004/swagger/index.html` for the UI.
+Visit <http://127.0.0.1:4004/swagger/index.html> for the UI.
 
 ## Design Overview
 
@@ -42,11 +66,13 @@ Visit `http://127.0.0.1:4004/swagger/index.html` for the UI.
 - Database: **PostgreSQL** is the source of truth, chosen for strong consistency
   and atomicity.
 
+![app-lifecycle](./assets/images/lifecycle.svg)
+
 ### Technical Decisions
 
 1. **Transaction-first design**
     - All operations are append-only transactions. Balances are derived, not stored
-      as single entity. This ensures traceability and prevents inconsistencies.
+      as single entities. This ensures traceability and prevents inconsistencies.
 
 2. **Balance calculation**
     - Optimized with a cached balances table, and is updated incrementally.
@@ -60,6 +86,8 @@ Visit `http://127.0.0.1:4004/swagger/index.html` for the UI.
       `failed` requests are refunded.
     - In case of a service shutdown, all pending processes are refunded on the
       next server startup.
+
+![transaction_state](./assets/images/tx_state.svg)
 
 ### Workflow
 
@@ -85,3 +113,5 @@ Visit `http://127.0.0.1:4004/swagger/index.html` for the UI.
 
 5. **User Creation**
     - Create (mocked) users, for testing purposes.
+
+![components](./assets/images/components.svg)

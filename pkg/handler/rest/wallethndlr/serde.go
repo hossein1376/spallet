@@ -65,8 +65,8 @@ func bindTopUpRequest(r *http.Request) (topUpDTO, error) {
 }
 
 type withdrawRequest struct {
-	Amount      int64  `json:"amount"`
-	Description string `json:"description"`
+	Amount      int64   `json:"amount"`
+	Description *string `json:"description"`
 
 	userID model.UserID
 }

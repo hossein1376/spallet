@@ -3,10 +3,10 @@ package rest
 import (
 	"net/http"
 
+	"github.com/hossein1376/spallet/pkg/application/service"
 	"github.com/hossein1376/spallet/pkg/handler/rest/swaggerhndlr"
 	"github.com/hossein1376/spallet/pkg/handler/rest/usershndlr"
 	"github.com/hossein1376/spallet/pkg/handler/rest/wallethndlr"
-	"github.com/hossein1376/spallet/pkg/service"
 )
 
 func routes(services *service.Services) *http.ServeMux {

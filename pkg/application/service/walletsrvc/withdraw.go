@@ -10,11 +10,10 @@ import (
 	"github.com/hossein1376/spallet/pkg/domain"
 	"github.com/hossein1376/spallet/pkg/domain/model"
 	"github.com/hossein1376/spallet/pkg/tools/errs"
-	"github.com/hossein1376/spallet/pkg/tools/worker"
 )
 
-func (s WalletsService) WithdrawalService(
-	ctx context.Context, userID model.UserID, amount int64,
+func (s *WalletsService) WithdrawalService(
+	ctx context.Context, userID model.UserID, amount int64, description *string,
 ) (*uuid.UUID, error) {
 	var (
 		refID *uuid.UUID
@@ -29,14 +28,16 @@ func (s WalletsService) WithdrawalService(
 			return errs.Conflict(errs.WithErr(ErrInsufficientFunds))
 		}
 
-		refID = model.Ptr(uuid.New())
+		refID = model.Ptr(s.generator.NewUUID())
 		txID, err = r.Tx.Insert(
 			ctx,
 			userID,
 			amount,
 			model.TxTypeWithdrawal,
 			model.InsertTxOption{
-				Status: model.Ptr(model.TxStatusPending), RefID: refID,
+				Description: description,
+				Status:      model.Ptr(model.TxStatusPending),
+				RefID:       refID,
 			},
 		)
 		if err != nil {
@@ -49,7 +50,7 @@ func (s WalletsService) WithdrawalService(
 		return nil, fmt.Errorf("query: %w", err)
 	}
 
-	err = s.jobs.WalletWithdraw.Add(
+	err = s.withdrawJob.Add(
 		context.WithoutCancel(ctx),
 		refID.String(),
 		s.withdraw(txID),
@@ -62,7 +63,7 @@ func (s WalletsService) WithdrawalService(
 	return refID, nil
 }
 
-func (s *WalletsService) withdraw(txID model.TxID) worker.Work {
+func (s *WalletsService) withdraw(txID model.TxID) func(ctx context.Context) error {
 	return func(ctx context.Context) error {
 		q := func(ctx context.Context, r *domain.Repository) error {
 			now := time.Now()
@@ -87,7 +88,7 @@ func (s *WalletsService) withdraw(txID model.TxID) worker.Work {
 	}
 }
 
-func (s *WalletsService) refund(txID model.TxID) worker.Work {
+func (s *WalletsService) refund(txID model.TxID) func(ctx context.Context) error {
 	return func(ctx context.Context) error {
 		return s.pool.Query(
 			ctx,

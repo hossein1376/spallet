@@ -7,8 +7,6 @@ import (
 	"time"
 
 	"github.com/hossein1376/spallet/pkg/domain"
-	"github.com/hossein1376/spallet/pkg/infrastructure/gateway"
-	"github.com/hossein1376/spallet/pkg/service/jobs"
 )
 
 var (
@@ -16,12 +14,18 @@ var (
 )
 
 type WalletsService struct {
-	pool    domain.Pool
-	gateway gateway.Gateway
-	jobs    *jobs.Jobs
+	pool        domain.Pool
+	gateway     domain.Gateway
+	withdrawJob domain.Worker
+	generator   domain.Generator
 }
 
-func New(pool domain.Pool, j *jobs.Jobs) (*WalletsService, error) {
+func New(
+	pool domain.Pool,
+	worker domain.Worker,
+	gateway domain.Gateway,
+	generator domain.Generator,
+) (*WalletsService, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	err := pool.Query(ctx, func(ctx context.Context, r *domain.Repository) error {
@@ -31,5 +35,10 @@ func New(pool domain.Pool, j *jobs.Jobs) (*WalletsService, error) {
 		return nil, fmt.Errorf("refund pending: %w", err)
 	}
 
-	return &WalletsService{pool: pool, gateway: gateway.New(), jobs: j}, nil
+	return &WalletsService{
+		pool:        pool,
+		gateway:     gateway,
+		withdrawJob: worker,
+		generator:   generator,
+	}, nil
 }

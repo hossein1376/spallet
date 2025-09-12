@@ -1,0 +1,7 @@
+dir: ./internal/mocks
+pkgname: mocks
+all: true
+packages:
+  github.com/hossein1376/spallet/pkg/domain:
+    config:
+      filename: domain_mocks.go

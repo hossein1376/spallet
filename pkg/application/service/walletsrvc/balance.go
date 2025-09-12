@@ -8,7 +8,9 @@ import (
 	"github.com/hossein1376/spallet/pkg/domain/model"
 )
 
-func (s WalletsService) BalanceService(ctx context.Context, userID model.UserID) (
+func (s *WalletsService) BalanceService(
+	ctx context.Context, userID model.UserID,
+) (
 	model.Balance, error,
 ) {
 	var balance model.Balance

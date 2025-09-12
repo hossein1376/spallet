@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/hossein1376/spallet/pkg/service"
+	"github.com/hossein1376/spallet/pkg/application/service"
 )
 
 type Server struct {

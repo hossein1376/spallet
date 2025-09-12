@@ -3,8 +3,8 @@ package usershndlr
 import (
 	"net/http"
 
+	"github.com/hossein1376/spallet/pkg/application/service"
 	"github.com/hossein1376/spallet/pkg/handler/rest/serde"
-	"github.com/hossein1376/spallet/pkg/service"
 )
 
 type UsersHandler struct {
