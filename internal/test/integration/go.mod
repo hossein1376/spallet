@@ -2,7 +2,7 @@ module github.com/hossein1376/spallet/internal/integration
 
 go 1.25
 
-replace github.com/hossein1376/spallet => ./../..
+replace github.com/hossein1376/spallet => ./../../..
 
 require (
 	github.com/hossein1376/spallet v0.0.0-00010101000000-000000000000

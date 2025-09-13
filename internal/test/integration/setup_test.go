@@ -4,10 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"math"
 	"math/rand/v2"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/suite"
 
@@ -16,7 +14,7 @@ import (
 	"github.com/hossein1376/spallet/pkg/infrastructure/database/postgres"
 )
 
-type TransactionsIntegrationSuite struct {
+type IntegrationSuite struct {
 	suite.Suite
 
 	ctx  context.Context
@@ -24,7 +22,7 @@ type TransactionsIntegrationSuite struct {
 	pool domain.Pool
 }
 
-func TestTransactionsIntegrationSuite(t *testing.T) {
+func TestIntegrationSuite(t *testing.T) {
 	ctx := context.Background()
 	db, cleanup, err := NewMockDB(ctx, t)
 	defer cleanup()
@@ -39,48 +37,11 @@ func TestTransactionsIntegrationSuite(t *testing.T) {
 		return
 	}
 
-	s := &TransactionsIntegrationSuite{ctx: ctx, db: db, pool: pool}
+	s := &IntegrationSuite{ctx: ctx, db: db, pool: pool}
 	suite.Run(t, s)
 }
 
-func (s *TransactionsIntegrationSuite) TestInsert() {
-	user := s.createUser()
-	amount := rand.Int64N(math.MaxInt16)
-	description := fmt.Sprintf("desc_%d", rand.Uint64())
-	releaseDate := time.Now().
-		Add(time.Duration(rand.IntN(math.MaxInt16))).
-		Truncate(time.Millisecond)
-
-	var txID model.TxID
-	err := s.pool.Query(s.ctx, func(ctx context.Context, r *domain.Repository) error {
-		var err error
-		txID, err = r.Tx.Insert(
-			ctx,
-			user.ID,
-			amount,
-			model.TxTypeDeposit,
-			model.InsertTxOption{
-				Description: &description,
-				ReleaseDate: &releaseDate,
-			},
-		)
-		return err
-	})
-	s.NoError(err)
-	s.NotZero(txID)
-
-	var actual = s.getTx(txID)
-	s.Equal(amount, actual.Amount)
-	s.Equal(model.TxTypeDeposit, actual.Type)
-	s.Equal(description, *actual.Description)
-	s.Equal(releaseDate, *actual.ReleaseDate)
-	s.Nil(actual.RefID)
-	s.Nil(actual.Status)
-	s.NotEmpty(actual.CreatedAt)
-	s.NotEmpty(actual.UpdatedAt)
-}
-
-func (s *TransactionsIntegrationSuite) createUser() *model.User {
+func (s *IntegrationSuite) createUser(createBalance bool) *model.User {
 	var user *model.User
 	err := s.pool.Query(s.ctx, func(ctx context.Context, r *domain.Repository) error {
 		var err error
@@ -88,9 +49,11 @@ func (s *TransactionsIntegrationSuite) createUser() *model.User {
 		if err != nil {
 			return fmt.Errorf("creating user: %v", err)
 		}
-		err = r.Balance.InsertZero(ctx, user.ID)
-		if err != nil {
-			return fmt.Errorf("inserting into balance table: %v", err)
+		if createBalance {
+			err = r.Balance.InsertZero(ctx, user.ID)
+			if err != nil {
+				return fmt.Errorf("inserting into balance table: %v", err)
+			}
 		}
 		return nil
 	})
@@ -98,7 +61,23 @@ func (s *TransactionsIntegrationSuite) createUser() *model.User {
 	return user
 }
 
-func (s *TransactionsIntegrationSuite) getTx(id model.TxID) model.Transaction {
+func (s *IntegrationSuite) insertTx(
+	userID model.UserID,
+	amount int64,
+	txType model.TxType,
+	opts model.InsertTxOption,
+) model.TxID {
+	var txID model.TxID
+	err := s.pool.Query(s.ctx, func(ctx context.Context, r *domain.Repository) error {
+		var err error
+		txID, err = r.Tx.Insert(ctx, userID, amount, txType, opts)
+		return err
+	})
+	s.NoError(err)
+	return txID
+}
+
+func (s *IntegrationSuite) getTx(id model.TxID) model.Transaction {
 	var tx model.Transaction
 	err := s.db.QueryRowContext(
 		s.ctx,

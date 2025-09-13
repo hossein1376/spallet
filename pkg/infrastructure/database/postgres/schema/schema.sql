@@ -24,6 +24,9 @@ CREATE TABLE transactions
          status IN ('pending', 'completed', 'failed'))
     )
 );
+CREATE INDEX idx_tx_user_created ON transactions (user_id, created_at DESC);
+CREATE INDEX idx_tx_status ON transactions (status);
+
 CREATE TABLE balances
 (
     user_id            BIGINT PRIMARY KEY REFERENCES users (id) ON DELETE CASCADE,
@@ -32,12 +35,6 @@ CREATE TABLE balances
     last_checked_id    BIGINT      NOT NULL DEFAULT 0,
     last_calculated_at TIMESTAMPTZ NOT NULL DEFAULT 'epoch'
 );
-
-CREATE INDEX idx_tx_user_created ON transactions (user_id, created_at DESC);
-CREATE INDEX idx_tx_deposit ON transactions (user_id, release_date, created_at)
-    WHERE type = 'deposit';
-CREATE INDEX idx_tx_withdrawal ON transactions (user_id, created_at)
-    WHERE type = 'withdrawal';
 CREATE INDEX idx_balances_user ON balances (user_id);
 
 CREATE FUNCTION refresh_user_balance(param_user_id BIGINT)
@@ -57,7 +54,7 @@ BEGIN
 
     CREATE TEMPORARY TABLE to_calculate
     (
-        ID BIGINT,
+        id BIGINT,
         amount NUMERIC,
         type VARCHAR(31),
         release_date TIMESTAMPTZ
@@ -67,8 +64,7 @@ BEGIN
     FROM transactions
     WHERE user_id = param_user_id
       AND (id > v_last_id OR
-           (release_date > v_last_time AND release_date <= NOW()))
-    ORDER BY id;
+           (release_date > v_last_time AND release_date <= NOW()));
 
     SELECT COALESCE((
         SELECT SUM(
@@ -139,7 +135,7 @@ BEGIN
     SET status = 'failed', updated_at = NOW()
     WHERE id IN (SELECT id FROM pending_tx);
 
-    INSERT INTO transactions (user_id, amount, "type", description)
+    INSERT INTO transactions (user_id, amount, type, description)
     SELECT user_id, amount, 'deposit', 'refund ' || ref_id::TEXT
     FROM pending_tx;
 END;
